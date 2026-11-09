@@ -271,9 +271,9 @@
 
   /* --------- 难度配置 --------- */
   const DIFF = {
-    easy:   { spawnInterval:1200, speedMul:0.8, scoreMul:1.5 },
-    normal: { spawnInterval:900,  speedMul:1.0, scoreMul:1.0 },
-    hard:   { spawnInterval:650,  speedMul:1.35, scoreMul:0.8 }
+    easy:   { spawnInterval:1350, speedMul:0.75, scoreMul:1.5 },
+    normal: { spawnInterval:1000, speedMul:1.0,  scoreMul:1.0 },
+    hard:   { spawnInterval:720,  speedMul:1.3,  scoreMul:0.8 }
   };
   let difficulty = 'normal';
 
@@ -394,7 +394,7 @@
     combo = 0;
     comboTimer = 0;
     timeElapsed = 0;
-    spawnTimer = -800;   // 首个障碍延迟，给玩家一点适应时间
+    spawnTimer = -1200;   // 首个障碍延迟，给玩家一点适应时间
     shake = 0;
     initStars();
     updateHUD();
@@ -411,9 +411,9 @@
   /* --------- 生成障碍 --------- */
   function spawnObstacle(){
     const diff = DIFF[difficulty];
-    const w = 30 + Math.random()*60;
+    const w = 28 + Math.random()*44;
     const x = Math.random()*(W - w);
-    const speed = (2.2 + Math.random()*1.8 + timeElapsed*0.0004) * diff.speedMul;
+    const speed = (1.9 + Math.random()*1.5 + timeElapsed*0.0003) * diff.speedMul;
     obstacles.push({
       x, y:-40, w, h:18,
       speed,
