@@ -259,6 +259,9 @@
     ctx.setTransform(dpr,0,0,dpr,0,0);
     W = rect.width;
     H = rect.height;
+    // 尺寸变化时把玩家重新贴到底部，避免跑到画布外
+    player.y = H - 80;
+    player.x = Math.min(player.x, Math.max(0, W - player.w));
   }
   window.addEventListener('resize', resize);
 
@@ -391,7 +394,7 @@
     combo = 0;
     comboTimer = 0;
     timeElapsed = 0;
-    spawnTimer = 0;
+    spawnTimer = -800;   // 首个障碍延迟，给玩家一点适应时间
     shake = 0;
     initStars();
     updateHUD();
@@ -601,9 +604,8 @@
       ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake);
     }
 
-    // --- 清屏 + 背景渐变覆盖 ---
-    ctx.fillStyle = 'rgba(5,2,15,.35)';
-    ctx.fillRect(0,0,W,H);
+    // --- 清屏（透明，保留舞台渐变背景）---
+    ctx.clearRect(0,0,W,H);
 
     // --- 星星 ---
     for(const s of stars){
@@ -878,7 +880,10 @@
     keys[dir] = on;
   }
   stage.addEventListener('touchstart', e=>{
+    // 点在按钮/弹层上时不拦截，保证 click 能正常触发
+    if(e.target.closest('.overlay') || e.target.closest('button')) return;
     const t = e.touches[0];
+    if(!t) return;
     touchStartX = t.clientX;
     touchStartY = t.clientY;
     ensureAudio();
@@ -891,8 +896,10 @@
     e.preventDefault();
   }, {passive:false});
   stage.addEventListener('touchmove', e=>{
+    if(e.target.closest('.overlay') || e.target.closest('button')) return;
     if(state!==STATE.PLAYING) return;
     const t = e.touches[0];
+    if(!t) return;
     const rect = stage.getBoundingClientRect();
     const localX = t.clientX - rect.left;
     keys.left = localX < rect.width/2;
