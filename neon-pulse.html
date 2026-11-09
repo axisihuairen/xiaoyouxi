@@ -749,6 +749,25 @@
       ctx.restore();
     }
 
+    // --- 开局操作提示（3 秒内淡出）---
+    if(state === STATE.PLAYING && timeElapsed < 3200){
+      const a = timeElapsed < 2300 ? 1 : Math.max(0, 1 - (timeElapsed-2300)/900);
+      const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 14;
+      ctx.font = 'bold 16px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText(coarse ? '滑动屏幕 或 按 ◀ ▶ 移动' : '← → 或 A / D 左右移动', W/2, H*0.40);
+      ctx.fillStyle = '#ffe74c';
+      ctx.shadowColor = '#ffe74c';
+      ctx.font = 'bold 13px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText('躲开红色激光 · 收集晶体得分', W/2, H*0.40 + 26);
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
