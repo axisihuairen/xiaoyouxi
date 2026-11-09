@@ -293,6 +293,7 @@
   let particles = [];   // 粒子特效
   let stars = [];       // 背景星星
   let shockwaves = [];  // 冲击波
+  let floaters = [];    // 得分飘字
 
   let score = 0;
   let combo = 0;
@@ -390,6 +391,7 @@
     crystals = [];
     particles = [];
     shockwaves = [];
+    floaters = [];
     score = 0;
     combo = 0;
     comboTimer = 0;
@@ -556,7 +558,10 @@
       }
       if(circleRectHit(c.x,c.y,c.size,player.x,player.y,player.w,player.h)){
         const pts = c.hue==='cyan' ? 50 : 20;
-        score += pts * diff.scoreMul * (1 + combo*0.1);
+        const gain = pts * diff.scoreMul * (1 + combo*0.1);
+        score += gain;
+        floaters.push({x:c.x, y:c.y, text:'+'+Math.round(gain), life:1,
+                       color:c.hue==='cyan'?'#00f0ff':'#ffe74c'});
         combo++;
         comboTimer = 120;
         explode(c.x,c.y,c.hue==='cyan'?'#00f0ff':'#ffe74c',12,3);
@@ -589,6 +594,13 @@
       s.life -= 0.08;
     }
     shockwaves = shockwaves.filter(s=>s.life>0);
+
+    // --- 得分飘字 ---
+    for(const f of floaters){
+      f.y -= 0.9;
+      f.life -= 0.018;
+    }
+    floaters = floaters.filter(f=>f.life>0);
 
     // --- 屏幕震动 ---
     if(shake>0) shake -= dt*0.02;
@@ -746,6 +758,19 @@
       ctx.beginPath();
       ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
       ctx.fill();
+      ctx.restore();
+    }
+
+    // --- 得分飘字 ---
+    for(const f of floaters){
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, f.life));
+      ctx.textAlign = 'center';
+      ctx.fillStyle = f.color;
+      ctx.shadowColor = f.color;
+      ctx.shadowBlur = 12;
+      ctx.font = 'bold 17px "PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillText(f.text, f.x, f.y);
       ctx.restore();
     }
 
