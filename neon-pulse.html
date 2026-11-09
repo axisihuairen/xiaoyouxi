@@ -554,7 +554,7 @@
           c.y += dy * 0.12;
         }
       }
-      if(circleRectHit(c.x,c.y,c.size,pcy-player.h/2,pcx-player.w/2,player.w,player.h)){
+      if(circleRectHit(c.x,c.y,c.size,player.x,player.y,player.w,player.h)){
         const pts = c.hue==='cyan' ? 50 : 20;
         score += pts * diff.scoreMul * (1 + combo*0.1);
         combo++;
