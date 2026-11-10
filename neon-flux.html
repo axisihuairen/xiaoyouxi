@@ -68,8 +68,20 @@
   .new-best{margin-top:10px;font-size:14px;color:var(--yellow);font-weight:700;letter-spacing:.05em;animation:pulse-badge 1.2s infinite}
 
   /* Color cycle hint */
-  .cycle-hint{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:4;pointer-events:none;opacity:.55}
-  .dot{width:14px;height:14px;border-radius:50%;box-shadow:0 0 10px currentColor}
+  .cycle-hint{position:absolute;top:calc(env(safe-area-inset-top,0px) + 66px);left:16px;display:flex;gap:7px;z-index:4;pointer-events:none;align-items:center}
+  .cycle-hint .cur-label{font-size:10px;letter-spacing:.16em;color:var(--muted);margin-right:2px;text-transform:uppercase}
+  .dot{width:13px;height:13px;border-radius:50%;box-shadow:0 0 8px currentColor;opacity:.35;transform:scale(.85);transition:.18s}
+  .dot.active{opacity:1;transform:scale(1.35);box-shadow:0 0 16px currentColor,0 0 0 2px rgba(255,255,255,.9)}
+
+  /* 移动端触控按钮 */
+  .touch-controls{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);left:0;right:0;display:none;justify-content:center;align-items:center;gap:14px;z-index:5;padding:0 18px}
+  .tc-btn{pointer-events:auto;-webkit-tap-highlight-color:transparent;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(10px);color:var(--ink);border-radius:16px;font-family:var(--font);font-weight:800;font-size:22px;width:76px;height:60px;display:flex;align-items:center;justify-content:center;transition:transform .1s,background .15s;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+  .tc-btn.tc-switch{width:auto;min-width:130px;flex:1;max-width:190px;font-size:16px;letter-spacing:.06em;background:linear-gradient(90deg,rgba(94,242,255,.22),rgba(255,94,200,.22));border-color:rgba(94,242,255,.5);color:#fff}
+  .tc-btn:active{transform:scale(.93);background:rgba(94,242,255,.28)}
+  @media (max-width:820px), (hover:none) and (pointer:coarse){
+    .touch-controls{display:flex}
+    .cycle-hint{opacity:1}
+  }
   .hint-bar{position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--violet),var(--lime));opacity:.35;z-index:3;pointer-events:none}
 </style>
 </head>
@@ -91,11 +103,19 @@
 
   <div class="cheat-badge" id="cheatBadge">⚡ 作弊模式 · 无敌穿越</div>
 
-  <div class="cycle-hint">
-    <div class="dot" style="color:var(--cyan);background:var(--cyan)"></div>
-    <div class="dot" style="color:var(--pink);background:var(--pink)"></div>
-    <div class="dot" style="color:var(--violet);background:var(--violet)"></div>
-    <div class="dot" style="color:var(--lime);background:var(--lime)"></div>
+  <div class="cycle-hint" id="colorHint">
+    <span class="cur-label">当前色</span>
+    <div class="dot active" id="cDot0" style="color:var(--cyan);background:var(--cyan)"></div>
+    <div class="dot" id="cDot1" style="color:var(--pink);background:var(--pink)"></div>
+    <div class="dot" id="cDot2" style="color:var(--violet);background:var(--violet)"></div>
+    <div class="dot" id="cDot3" style="color:var(--lime);background:var(--lime)"></div>
+  </div>
+
+  <!-- 移动端触控按钮 -->
+  <div class="touch-controls" id="touchControls">
+    <button class="tc-btn" id="tcLeft" aria-label="left">◀</button>
+    <button class="tc-btn tc-switch" id="tcSwitch" aria-label="switch color">切换颜色</button>
+    <button class="tc-btn" id="tcRight" aria-label="right">▶</button>
   </div>
 
   <!-- Start overlay -->
@@ -110,8 +130,8 @@
       沿路收集 <b style="color:var(--yellow)">★ 晶体</b> 获得额外分数，撑得越久越快。
     </div>
     <div class="keys">
-      <div class="key"><span class="k">← →</span>移动</div>
-      <div class="key"><span class="k">空格 / 点击</span>切换颜色</div>
+      <div class="key"><span class="k">移动鼠标 / ← →</span>移动</div>
+      <div class="key"><span class="k">点击 / 空格</span>切换颜色</div>
       <div class="key"><span class="k">P</span>暂停</div>
     </div>
     <button class="btn" id="startBtn">开始游戏</button>
@@ -251,11 +271,12 @@
     shockwaves = [];
     score = 0;
     timeElapsed = 0;
-    fallSpeed = 115;
-    spawnTimer = 0;
+    fallSpeed = 140;
+    spawnTimer = 999;   // 首帧立即生成第一道门，避免开局空等
     starTimer = 0;
     shake = 0;
     updateHUD();
+    updateColorHint();
   }
 
   function startGame(){
@@ -263,8 +284,6 @@
     resetGame();
     state = STATE.PLAYING;
     hideOverlays();
-    lastTs = performance.now();
-    requestAnimationFrame(loop);
   }
 
   function gameOver(){
@@ -293,8 +312,6 @@
     } else if(state === STATE.PAUSED){
       state = STATE.PLAYING;
       hideOverlays();
-      lastTs = performance.now();
-      requestAnimationFrame(loop);
     }
   }
 
@@ -331,6 +348,11 @@
     if(used.every(c=>c===used[0])){
       segments[Math.floor(Math.random()*segCount)].colorIdx = (used[0]+1)%4;
     }
+    // 第一道门：让光球初始位置所在段与出生颜色一致，避免开局被随机色秒杀
+    if(gates.length === 0){
+      const startIdx = Math.min(segCount-1, Math.floor((W/2) / segW));
+      segments[startIdx].colorIdx = 0;
+    }
     gates.push({ y, h, segments, passed:false });
   }
 
@@ -366,23 +388,24 @@
     timeElapsed += dt;
 
     // 难度递增
-    fallSpeed = 115 + Math.min(260, score * 2.2 + timeElapsed * 0.012);
+    fallSpeed = 140 + Math.min(250, score * 2.2 + timeElapsed * 0.012);
 
-    /* 玩家水平移动（键盘） */
+    /* 玩家水平移动：键盘 > 触控拖动 > 鼠标跟随 */
     const moveSpeed = 380;
-    if(keys.left)  player.vx = -moveSpeed;
-    else if(keys.right) player.vx = moveSpeed;
-    else player.vx = 0;
-
-    // 触摸/鼠标目标位置
-    if(pointer.active){
-      player.tx = pointer.x;
+    const maxV = moveSpeed * 1.8;
+    if(keys.left){ player.vx = -moveSpeed; }
+    else if(keys.right){ player.vx = moveSpeed; }
+    else if(pointer.dragging){
+      // 触控拖动：跟随手指
+      const dx = pointer.x - player.x;
+      player.vx = Math.max(-maxV, Math.min(maxV, dx * 14));
     }
-    // 平滑移动到目标（触摸）或直接速度（键盘）
-    if(pointer.active && !keys.left && !keys.right){
-      const dx = player.tx - player.x;
-      player.vx = Math.max(-moveSpeed*1.6, Math.min(moveSpeed*1.6, dx * 14));
+    else if(!isTouch && mouseActive){
+      // 桌面端：鼠标悬停即可移动，降低上手门槛
+      const dx = mouseX - player.x;
+      player.vx = Math.abs(dx) < 1 ? 0 : Math.max(-maxV, Math.min(maxV, dx * 12));
     }
+    else { player.vx = 0; }
     player.x += player.vx * dt;
     player.x = Math.max(player.r, Math.min(W - player.r, player.x));
 
@@ -680,33 +703,41 @@
   }
 
   /* ========================= 主循环 ========================= */
-  function loop(ts){
-    if(state !== STATE.PLAYING) return;
-    const dt = Math.min(0.033, (ts - lastTs)/1000);
+  function tick(ts){
+    // 单一常驻循环：任何状态都持续渲染，避免画面冻结
+    let dt = (ts - lastTs) / 1000;
+    if(!isFinite(dt) || dt < 0) dt = 0.016;
+    dt = Math.min(0.05, dt);
     lastTs = ts;
-    update(dt);
+    if(state === STATE.PLAYING){
+      update(dt);           // update 内部会推进 timeElapsed
+    } else {
+      timeElapsed += dt;    // 非游戏状态让背景/光球保持细微动画
+    }
     render();
-    requestAnimationFrame(loop);
-  }
-
-  /* 非游戏状态也持续渲染背景 */
-  function idleRender(){
-    if(state === STATE.PLAYING) return;
-    // 仍更新时间用于背景动画
-    timeElapsed += 0.016;
-    render();
-    requestAnimationFrame(idleRender);
+    requestAnimationFrame(tick);
   }
 
   /* ========================= 输入 ========================= */
   const keys = { left:false, right:false };
-  const pointer = { active:false, x:0, y:0, startTime:0 };
+  const pointer = { active:false, dragging:false, x:0, y:0, startX:0, startY:0, startTime:0 };
+  let isTouch = false;
+  let mouseX = 0;
+  let mouseActive = false;
 
   function cycleColor(){
     if(state !== STATE.PLAYING) return;
     player.colorIdx = (player.colorIdx + 1) % COLORS.length;
     player.pulse = 0;
+    updateColorHint();
     playSfx('switch');
+  }
+
+  function updateColorHint(){
+    for(let i=0;i<COLORS.length;i++){
+      const el = document.getElementById('cDot'+i);
+      if(el) el.classList.toggle('active', i === player.colorIdx);
+    }
   }
 
   document.addEventListener('keydown', e=>{
@@ -768,28 +799,30 @@
   /* 触摸 / 鼠标 */
   function onPointerDown(e){
     ensureAudio();
+    isTouch = true;
     const p = getPoint(e);
     pointer.active = true;
-    pointer.x = p.x;
-    pointer.y = p.y;
+    pointer.dragging = false;
+    pointer.x = p.x; pointer.y = p.y;
+    pointer.startX = p.x; pointer.startY = p.y;
     pointer.startTime = performance.now();
-    // 点击右侧或快速点按用于切换颜色 —— 改为：短按切换颜色，拖动移动
   }
   function onPointerMove(e){
     if(!pointer.active) return;
     const p = getPoint(e);
-    pointer.x = p.x;
-    pointer.y = p.y;
+    pointer.x = p.x; pointer.y = p.y;
+    // 超过阈值才视为拖动，纯轻点不算移动
+    if(!pointer.dragging){
+      const dx = p.x - pointer.startX, dy = p.y - pointer.startY;
+      if(Math.hypot(dx,dy) > 14) pointer.dragging = true;
+    }
   }
   function onPointerUp(e){
     if(!pointer.active) return;
-    const dt = performance.now() - pointer.startTime;
-    const moved = pointer.active;
+    const wasDrag = pointer.dragging;
     pointer.active = false;
-    // 短按（<200ms 且位移小）切换颜色
-    if(dt < 220){
-      cycleColor();
-    }
+    pointer.dragging = false;
+    if(!wasDrag) cycleColor();   // 轻点只切色，不再把光球拽走
   }
   function getPoint(e){
     if(e.touches && e.touches.length){
@@ -798,12 +831,42 @@
     return { x:e.clientX, y:e.clientY };
   }
 
+  /* 触控（仅 canvas） */
   cv.addEventListener('touchstart', onPointerDown, {passive:true});
   cv.addEventListener('touchmove', onPointerMove, {passive:true});
   cv.addEventListener('touchend', onPointerUp, {passive:true});
-  cv.addEventListener('mousedown', onPointerDown);
-  window.addEventListener('mousemove', onPointerMove);
-  window.addEventListener('mouseup', onPointerUp);
+  cv.addEventListener('touchcancel', ()=>{ pointer.active=false; pointer.dragging=false; }, {passive:true});
+  // 任意触摸一旦发生即切换到触控模式，关闭鼠标跟随
+  document.addEventListener('touchstart', ()=>{ isTouch = true; }, {passive:true});
+
+  /* 桌面鼠标：悬停移动 + 点击切色 */
+  window.addEventListener('mousemove', e=>{
+    if(isTouch) return;
+    mouseActive = true; mouseX = e.clientX;
+  });
+  cv.addEventListener('click', ()=>{
+    if(isTouch) return;
+    cycleColor();
+  });
+
+  /* 移动端屏幕按钮 */
+  const holdBtn = (el, key) => {
+    if(!el) return;
+    const on = ev => { ev.preventDefault(); ev.stopPropagation(); isTouch = true; ensureAudio(); keys[key] = true; };
+    const off = ev => { if(ev) ev.preventDefault(); keys[key] = false; };
+    el.addEventListener('pointerdown', on);
+    el.addEventListener('pointerup', off);
+    el.addEventListener('pointercancel', off);
+    el.addEventListener('pointerleave', off);
+  };
+  holdBtn(document.getElementById('tcLeft'), 'left');
+  holdBtn(document.getElementById('tcRight'), 'right');
+  const swBtn = document.getElementById('tcSwitch');
+  if(swBtn){
+    swBtn.addEventListener('pointerdown', ev=>{
+      ev.preventDefault(); ev.stopPropagation(); isTouch = true; ensureAudio(); cycleColor();
+    });
+  }
 
   /* 按钮 */
   document.getElementById('startBtn').addEventListener('click', startGame);
@@ -816,12 +879,24 @@
   document.getElementById('homeBtn').addEventListener('click', ()=>{
     state = STATE.START;
     showOverlay('startOverlay');
+    updateColorHint();
+  });
+
+  /* 旋转/尺寸变化时保持光球在可视区域内，避免"看不到球" */
+  window.addEventListener('resize', ()=>{
+    player.y = H - 110;
+    player.x = Math.max(player.r, Math.min(W - player.r, player.x));
+    mouseX = Math.max(player.r, Math.min(W - player.r, mouseX || W/2));
   });
 
   /* 初始化 */
   updateHUD();
-  player.x = W/2; player.tx = W/2; player.y = H - 110;
-  idleRender();
+  updateColorHint();
+  player.x = W/2; player.y = H - 110;
+  mouseX = W/2;
+  mouseActive = false;
+  lastTs = performance.now();
+  requestAnimationFrame(tick);
 
 })();
 </script>
