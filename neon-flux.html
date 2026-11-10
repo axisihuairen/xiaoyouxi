@@ -43,7 +43,8 @@
   @keyframes pulse-badge{0%,100%{box-shadow:0 0 14px rgba(255,216,77,.3)}50%{box-shadow:0 0 26px rgba(255,216,77,.65)}}
 
   /* Overlays */
-  .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:radial-gradient(ellipse at 50% 35%,rgba(20,22,50,.6) 0%,rgba(5,6,15,.86) 70%);backdrop-filter:blur(6px)}
+  .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;text-align:center;padding:calc(env(safe-area-inset-top,0px) + 24px) 22px calc(env(safe-area-inset-bottom,0px) + 24px);background:radial-gradient(ellipse at 50% 35%,rgba(20,22,50,.6) 0%,rgba(5,6,15,.86) 70%);backdrop-filter:blur(6px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .overlay > *{flex:0 0 auto;max-width:100%}
   .overlay.hidden{display:none}
   .brand{font-size:12px;letter-spacing:.5em;color:var(--muted);margin-bottom:10px;text-transform:uppercase}
   .title{font-size:clamp(38px,9vw,68px);font-weight:900;letter-spacing:.02em;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--violet),var(--lime));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 22px rgba(167,139,255,.45));line-height:1.05}
@@ -83,6 +84,19 @@
     .cycle-hint{opacity:1}
   }
   .hint-bar{position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--violet),var(--lime));opacity:.35;z-index:3;pointer-events:none}
+  /* 小屏 / 横屏：压缩开始页，确保「开始游戏」始终可见可点 */
+  @media (max-height:680px){
+    .overlay{padding-top:calc(env(safe-area-inset-top,0px) + 10px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+    .brand{margin-bottom:4px}
+    .title{font-size:clamp(28px,7vw,46px)}
+    .subtitle{margin-top:5px}
+    .sub-zh{margin-top:2px}
+    .desc{margin-top:10px;font-size:12px;line-height:1.5}
+    .keys{margin-top:9px;gap:6px}
+    .keys .key{padding:4px 9px;font-size:11px}
+    .btn{margin-top:14px;padding:12px 28px;font-size:15px}
+    .btn.secondary{margin-top:8px;padding:9px 20px}
+  }
 </style>
 </head>
 <body>
